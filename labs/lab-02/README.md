@@ -303,3 +303,12 @@ docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api@sha256:9c9498d101a706cf2b0b
 **AI381 Lab 2 - Container and CI**  
 Faculty of Computer and Information Technology  
 Jordan University of Science and Technology (JUST)
+
+## Development Workflow
+
+All changes are submitted through pull requests.
+
+Pull requests targeting `main` must pass the required
+GitHub Actions checks before they can be merged.
+
+The `main` branch is protected by repository rules.
