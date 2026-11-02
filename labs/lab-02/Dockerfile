@@ -1,3 +1,4 @@
+
 # Stage 1: Build
 FROM python:3.14.4-slim AS builder
 
@@ -17,6 +18,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# Update OS packages to get security fixes
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy installed dependencies from builder
 COPY --from=builder /install /usr/local
