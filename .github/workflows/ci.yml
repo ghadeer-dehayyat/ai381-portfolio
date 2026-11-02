@@ -7,12 +7,14 @@ on:
       - main
     paths:
       - "labs/lab-02/**"
+      - ".github/workflows/ci.yml"
 
   push:
     branches:
       - main
     paths:
       - "labs/lab-02/**"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
