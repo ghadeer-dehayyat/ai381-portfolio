@@ -2,22 +2,26 @@
 
 [![CI](https://github.com/ghadeer-dehayyat/ai381-portfolio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ghadeer-dehayyat/ai381-portfolio/actions/workflows/ci.yml)
 
-A machine learning churn prediction API packaged with Docker and automated using GitHub Actions. The project demonstrates model serving, automated testing, container security scanning, and publishing Docker images to GitHub Container Registry (GHCR).
+A machine learning churn prediction API packaged with Docker and automated using GitHub Actions. This project demonstrates model serving, automated testing, containerization, security scanning, and continuous integration and delivery (CI/CD).
 
 ## Project Overview
 
-This project packages a machine learning churn prediction model as a REST API using FastAPI.
+This project packages a trained customer churn prediction model as a REST API using FastAPI.
 
-It includes:
+The API accepts customer information and returns the predicted probability of churn.
 
-- A model-serving API with `/health` and `/predict` endpoints.
-- Pydantic-based input validation.
-- Automated tests using pytest.
-- A multi-stage Docker image running as a non-root user.
-- A Docker health check.
-- GitHub Actions CI/CD automation.
-- Trivy vulnerability scanning.
-- Automatic publishing to GitHub Container Registry (GHCR), tagged with the commit SHA.
+### Key Features
+
+- FastAPI REST API with `/health` and `/predict` endpoints.
+- Pydantic input validation.
+- Machine learning model loading using Joblib.
+- Automated testing using pytest.
+- Multi-stage Docker build.
+- Non-root container execution.
+- Docker HEALTHCHECK.
+- Automated linting and testing with GitHub Actions.
+- Docker image vulnerability scanning using Trivy.
+- Automatic image publishing to GitHub Container Registry (GHCR), tagged with the commit SHA.
 
 ## Project Structure
 
@@ -49,11 +53,13 @@ lab-02/
 
 Open a terminal in the `labs/lab-02` directory.
 
-### 1. Create and activate a virtual environment
+### 1. Create a virtual environment
 
 ```bash
 python -m venv .venv
 ```
+
+### 2. Activate the virtual environment
 
 Windows CMD:
 
@@ -61,13 +67,19 @@ Windows CMD:
 .venv\Scripts\activate
 ```
 
-### 2. Install dependencies
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements-dev.txt
 ```
 
-### 3. Start the API
+### 4. Start the API
 
 Run the service with one command:
 
@@ -82,14 +94,74 @@ The API will be available at:
 
 ## API Endpoints
 
+The application provides two endpoints:
+
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/health` | Checks whether the API is running and the model is loaded. |
-| POST | `/predict` | Returns a churn prediction for the supplied input. |
+| GET | `/health` | Checks API availability and model loading status. |
+| POST | `/predict` | Predicts the probability of customer churn. |
 
-The `/predict` endpoint validates incoming data using Pydantic before making a prediction.
+### Health Check
 
-See `sample_request.json` for an example request payload.
+Request:
+
+```http
+GET /health
+```
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "model_loaded": true
+}
+```
+
+### Churn Prediction
+
+Request:
+
+```http
+POST /predict
+Content-Type: application/json
+```
+
+Example request body:
+
+```json
+{
+  "tenure_months": 5,
+  "monthly_fee": 89.9,
+  "contract": "month-to-month",
+  "internet_service": "fiber",
+  "support_calls": 3
+}
+```
+
+Example response:
+
+```json
+{
+  "churn_probability": 0.735
+}
+```
+
+*The probability shown above is illustrative. The actual result is calculated by the trained model.*
+
+### Input Validation
+
+The API uses Pydantic to validate customer input before making predictions.
+
+| Field | Validation |
+|---|---|
+| `tenure_months` | Non-negative integer |
+| `monthly_fee` | Non-negative number |
+| `contract` | Non-empty string |
+| `internet_service` | Non-empty string |
+| `support_calls` | Non-negative integer |
+
+Unexpected input fields are rejected using `ConfigDict(extra="forbid")`.
 
 ## Run Tests
 
@@ -101,11 +173,11 @@ python -m pytest -v
 
 The test suite contains at least five tests covering:
 
-- Health endpoint behavior.
-- Model loading.
-- Prediction endpoint contract.
-- Invalid input validation.
-- Unexpected input fields.
+1. Health endpoint behavior.
+2. Model loading.
+3. Prediction endpoint contract.
+4. Invalid input validation.
+5. Unexpected input fields.
 
 ## Code Quality
 
@@ -117,16 +189,17 @@ ruff check src tests
 
 ## Docker
 
-The Dockerfile uses a multi-stage build to separate dependency installation from the runtime image.
+The Dockerfile uses a multi-stage build to separate dependency installation from the runtime environment.
 
-It also includes:
+It includes:
 
 - A pinned Python base image.
+- Separate builder and runtime stages.
 - A non-root application user.
-- A Docker `HEALTHCHECK`.
-- A production-style Uvicorn startup command.
+- A Docker HEALTHCHECK.
+- A Uvicorn startup command.
 
-### Build the image
+### Build the Docker Image
 
 Run from the `labs/lab-02` directory:
 
@@ -134,21 +207,47 @@ Run from the `labs/lab-02` directory:
 docker build -t ai381-churn-api:local .
 ```
 
-### Run the container
+### Run the Container
 
 ```bash
 docker run --rm -p 8000:8000 ai381-churn-api:local
 ```
 
-The API will be available at http://localhost:8000.
+The API will be available at:
+
+http://localhost:8000
+
+### Check Container Health
+
+```bash
+docker ps
+```
+
+The container health status can be checked using:
+
+```bash
+docker inspect --format="{{.State.Health.Status}}" CONTAINER_ID
+```
+
+## Security Scanning with Trivy
+
+Trivy is used to scan the Docker image for vulnerabilities.
+
+The GitHub Actions workflow scans for HIGH and CRITICAL vulnerabilities and fails the pipeline if matching findings are detected.
+
+Local scan example:
+
+```bash
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed ai381-churn-api:local
+```
 
 ## CI/CD Pipeline
 
-GitHub Actions automates the testing, building, scanning, and publishing process.
+GitHub Actions automates testing, Docker image building, vulnerability scanning, and publishing.
 
 ### Pull Requests
 
-When a pull request targets `main`, the workflow:
+When a pull request targets the `main` branch, the workflow:
 
 1. Checks out the repository.
 2. Sets up Python.
@@ -160,32 +259,40 @@ When a pull request targets `main`, the workflow:
 
 When changes are pushed to `main`, the workflow:
 
-1. Runs the tests and lint checks.
+1. Runs linting and tests.
 2. Builds the Docker image.
 3. Scans the image using Trivy.
-4. Pushes the image to GHCR if the scan succeeds.
+4. Pushes the image to GitHub Container Registry if the scan succeeds.
 
 All third-party GitHub Actions are pinned to full commit SHAs.
 
-## Docker Image on GHCR
+## Docker Image on GitHub Container Registry (GHCR)
 
-The published image is available through GitHub Container Registry.
+The Docker image is published to GitHub Container Registry.
 
-**Package:** `ai381-churn-api`
-
-**Registry:** `ghcr.io`
-
-**Package visibility:** Public
+- **Package:** `ai381-churn-api`
+- **Registry:** `ghcr.io`
+- **Visibility:** Public
 
 [View the Docker package on GHCR](https://github.com/users/ghadeer-dehayyat/packages/container/ai381-churn-api)
 
-Pull the published image using its commit-SHA tag:
+### Pull the Image Using Its Commit SHA Tag
 
 ```bash
 docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api:0e3db81d56fabc9b2ef74373bdf2668746f2741a
 ```
 
-**Image digest:** `ADD_VERIFIED_GHCR_IMAGE_DIGEST_HERE`
+### Image Digest
+
+```text
+sha256:9c9498d101a706cf2b0b73c5678082abfab80c40dd6f4e28e1f1aca61a51070a
+```
+
+Pull the exact image by digest:
+
+```bash
+docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api@sha256:9c9498d101a706cf2b0b73c5678082abfab80c40dd6f4e28e1f1aca61a51070a
+```
 
 ## Repository
 
@@ -193,6 +300,6 @@ docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api:0e3db81d56fabc9b2ef74373bdf
 
 ---
 
-**AI381 Lab 2 – Container and CI**  
+**AI381 Lab 2 - Container and CI**  
 Faculty of Computer and Information Technology  
 Jordan University of Science and Technology (JUST)
