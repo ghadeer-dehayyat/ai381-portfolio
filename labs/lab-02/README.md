@@ -1,42 +1,630 @@
-# AI381 Lab 1 · The Manual Pipeline Race (starter kit)
+# \# AI381 Lab 2: Container and CI
 
-Dr. Tariq Al-Omari · AI381 Machine Learning Operations · JUST · Fall 2026/27
+# 
 
-Lab 1 is short, a little chaotic, and on purpose. You will deliver a model by hand, change it, and
-log what that costs you. There is no wrong result: an honest pain log is a great pain log.
+# \[!\[CI](https://github.com/ghadeer-dehayyat/ai381-portfolio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ghadeer-dehayyat/ai381-portfolio/actions/workflows/ci.yml)
 
-## What is in this kit
+# 
 
-| File | What it is |
-|---|---|
-| `churn_v1.csv` | Customer churn data, version 1 (1,200 customers) |
-| `churn_v2.csv` | Version 2 of the same data. Something changed. You will find out in Twist 1 |
-| `lab1_baseline.ipynb` | The notebook that trains a logistic regression and saves `model.joblib` |
-| `app/main.py` | A small FastAPI service that loads `model.joblib` and serves `/predict` |
-| `sample_request.json` | One customer to send to the API |
-| `requirements.txt` | The packages the notebook author remembered to write down |
-| `pain_log_template.txt` | Copy it to `pain_log.txt` and fill it in as you go |
+# A machine learning churn prediction API packaged with Docker and automated using GitHub Actions. This project demonstrates model serving, automated testing, containerization, security scanning, and continuous integration and delivery (CI/CD).
 
-## The race (start your stopwatch first)
+# 
 
-1. **Round 1.** Run the notebook with `churn_v1.csv`. Start the API by hand:
-   `uvicorn app.main:app --port 8000`
-   Send three predictions with curl, changing the values each time:
-   `curl -X POST localhost:8000/predict -H "Content-Type: application/json" -d @sample_request.json`
-2. **Twist 1.** Change the notebook to `churn_v2.csv`, retrain and redeploy. Find and fix what breaks.
-3. **Twist 2.** Create a brand-new virtual environment (or a Codespace) and rebuild everything using only your own notes.
-4. **Twist 3.** Answer: "Which model version is your API serving right now?" and explain why it is hard to prove.
-5. Finish `pain_log.txt`: minutes per step, every failure, every unanswered question.
+# \## Project Overview
 
-## Setup
+# 
 
-- Python 3.11 or newer and a terminal. On Windows, use WSL2 with Ubuntu.
-- `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+# This project packages a trained customer churn prediction model as a REST API using FastAPI.
 
-## Turning it in
+# 
 
-Record one 5–8 minute video with your face and voice, say each checkpoint aloud, and turn it in on the
-**Lab 1** assignment in the **AI381 MLOPs** team on Microsoft Teams (Lab Submissions channel, Assignments tab).
-The full instructions, checkpoints and rubric are on e-learning and on the Teams assignment.
+# The API accepts customer information and returns the predicted probability of churn.
 
-Questions: Thursday online office hours on Teams, the Lab Submissions channel, or talomari@just.edu.jo.
+# 
+
+# \### Key Features
+
+# 
+
+# \- FastAPI REST API with `/health` and `/predict` endpoints.
+
+# \- Pydantic input validation.
+
+# \- Machine learning model loading using Joblib.
+
+# \- Automated testing using pytest.
+
+# \- Multi-stage Docker build.
+
+# \- Non-root container execution.
+
+# \- Docker HEALTHCHECK.
+
+# \- Automated linting and testing with GitHub Actions.
+
+# \- Docker image vulnerability scanning using Trivy.
+
+# \- Automatic image publishing to GitHub Container Registry (GHCR), tagged with the commit SHA.
+
+# 
+
+# \## Project Structure
+
+# 
+
+# ```text
+
+# lab-02/
+
+# ├── src/
+
+# │   ├── app/
+
+# │   │   └── main.py
+
+# │   └── train/
+
+# │       └── train.py
+
+# ├── tests/
+
+# │   └── test\_api.py
+
+# ├── model.joblib
+
+# ├── requirements.txt
+
+# ├── requirements-dev.txt
+
+# ├── Dockerfile
+
+# ├── .dockerignore
+
+# ├── sample\_request.json
+
+# └── README.md
+
+# ```
+
+# 
+
+# \## Requirements
+
+# 
+
+# \- Python 3.14
+
+# \- Docker Desktop with WSL2, or a compatible Docker environment
+
+# \- Git
+
+# 
+
+# \## Run Locally
+
+# 
+
+# Open a terminal in the `labs/lab-02` directory.
+
+# 
+
+# \### 1. Create a virtual environment
+
+# 
+
+# ```bash
+
+# python -m venv .venv
+
+# ```
+
+# 
+
+# \### 2. Activate the virtual environment
+
+# 
+
+# Windows CMD:
+
+# 
+
+# ```cmd
+
+# .venv\\Scripts\\activate
+
+# ```
+
+# 
+
+# Windows PowerShell:
+
+# 
+
+# ```powershell
+
+# .venv\\Scripts\\Activate.ps1
+
+# ```
+
+# 
+
+# \### 3. Install dependencies
+
+# 
+
+# ```bash
+
+# pip install -r requirements-dev.txt
+
+# ```
+
+# 
+
+# \### 4. Start the API
+
+# 
+
+# Run the service with one command:
+
+# 
+
+# ```bash
+
+# uvicorn src.app.main:app --host 0.0.0.0 --port 8000
+
+# ```
+
+# 
+
+# The API will be available at:
+
+# 
+
+# \- API documentation: http://localhost:8000/docs
+
+# \- Health check: http://localhost:8000/health
+
+# 
+
+# \## API Endpoints
+
+# 
+
+# The application provides two endpoints:
+
+# 
+
+# | Method | Endpoint | Description |
+
+# |---|---|---|
+
+# | GET | `/health` | Checks API availability and model loading status. |
+
+# | POST | `/predict` | Predicts the probability of customer churn. |
+
+# 
+
+# \### Health Check
+
+# 
+
+# Request:
+
+# 
+
+# ```http
+
+# GET /health
+
+# ```
+
+# 
+
+# Example response:
+
+# 
+
+# ```json
+
+# {
+
+# &#x20; "status": "ok",
+
+# &#x20; "model\_loaded": true
+
+# }
+
+# ```
+
+# 
+
+# \### Churn Prediction
+
+# 
+
+# Request:
+
+# 
+
+# ```http
+
+# POST /predict
+
+# Content-Type: application/json
+
+# ```
+
+# 
+
+# Example request body:
+
+# 
+
+# ```json
+
+# {
+
+# &#x20; "tenure\_months": 5,
+
+# &#x20; "monthly\_fee": 89.9,
+
+# &#x20; "contract": "month-to-month",
+
+# &#x20; "internet\_service": "fiber",
+
+# &#x20; "support\_calls": 3
+
+# }
+
+# ```
+
+# 
+
+# Example response:
+
+# 
+
+# ```json
+
+# {
+
+# &#x20; "churn\_probability": 0.735
+
+# }
+
+# ```
+
+# 
+
+# \*The probability shown above is illustrative. The actual result is calculated by the trained model.\*
+
+# 
+
+# \### Input Validation
+
+# 
+
+# The API uses Pydantic to validate customer input before making predictions.
+
+# 
+
+# | Field | Validation |
+
+# |---|---|
+
+# | `tenure\_months` | Non-negative integer |
+
+# | `monthly\_fee` | Non-negative number |
+
+# | `contract` | Non-empty string |
+
+# | `internet\_service` | Non-empty string |
+
+# | `support\_calls` | Non-negative integer |
+
+# 
+
+# Unexpected input fields are rejected using `ConfigDict(extra="forbid")`.
+
+# 
+
+# \## Run Tests
+
+# 
+
+# Run the automated test suite:
+
+# 
+
+# ```bash
+
+# python -m pytest -v
+
+# ```
+
+# 
+
+# The test suite contains at least five tests covering:
+
+# 
+
+# 1\. Health endpoint behavior.
+
+# 2\. Model loading.
+
+# 3\. Prediction endpoint contract.
+
+# 4\. Invalid input validation.
+
+# 5\. Unexpected input fields.
+
+# 
+
+# \## Code Quality
+
+# 
+
+# Run Ruff to check code quality:
+
+# 
+
+# ```bash
+
+# ruff check src tests
+
+# ```
+
+# 
+
+# \## Docker
+
+# 
+
+# The Dockerfile uses a multi-stage build to separate dependency installation from the runtime environment.
+
+# 
+
+# It includes:
+
+# 
+
+# \- A pinned Python base image.
+
+# \- Separate builder and runtime stages.
+
+# \- A non-root application user.
+
+# \- A Docker HEALTHCHECK.
+
+# \- A Uvicorn startup command.
+
+# 
+
+# \### Build the Docker Image
+
+# 
+
+# Run from the `labs/lab-02` directory:
+
+# 
+
+# ```bash
+
+# docker build -t ai381-churn-api:local .
+
+# ```
+
+# 
+
+# \### Run the Container
+
+# 
+
+# ```bash
+
+# docker run --rm -p 8000:8000 ai381-churn-api:local
+
+# ```
+
+# 
+
+# The API will be available at:
+
+# 
+
+# http://localhost:8000
+
+# 
+
+# \### Check Container Health
+
+# 
+
+# ```bash
+
+# docker ps
+
+# ```
+
+# 
+
+# The container health status can be checked using:
+
+# 
+
+# ```bash
+
+# docker inspect --format="{{.State.Health.Status}}" CONTAINER\_ID
+
+# ```
+
+# 
+
+# \## Security Scanning with Trivy
+
+# 
+
+# Trivy is used to scan the Docker image for vulnerabilities.
+
+# 
+
+# The GitHub Actions workflow scans for HIGH and CRITICAL vulnerabilities and fails the pipeline if matching findings are detected.
+
+# 
+
+# Local scan example:
+
+# 
+
+# ```bash
+
+# docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed ai381-churn-api:local
+
+# ```
+
+# 
+
+# \## CI/CD Pipeline
+
+# 
+
+# GitHub Actions automates testing, Docker image building, vulnerability scanning, and publishing.
+
+# 
+
+# \### Pull Requests
+
+# 
+
+# When a pull request targets the `main` branch, the workflow:
+
+# 
+
+# 1\. Checks out the repository.
+
+# 2\. Sets up Python.
+
+# 3\. Installs development dependencies.
+
+# 4\. Runs Ruff linting.
+
+# 5\. Runs the pytest test suite.
+
+# 
+
+# \### Pushes to Main
+
+# 
+
+# When changes are pushed to `main`, the workflow:
+
+# 
+
+# 1\. Runs linting and tests.
+
+# 2\. Builds the Docker image.
+
+# 3\. Scans the image using Trivy.
+
+# 4\. Pushes the image to GitHub Container Registry if the scan succeeds.
+
+# 
+
+# All third-party GitHub Actions are pinned to full commit SHAs.
+
+# 
+
+# \## Docker Image on GitHub Container Registry (GHCR)
+
+# 
+
+# The Docker image is published to GitHub Container Registry.
+
+# 
+
+# \- \*\*Package:\*\* `ai381-churn-api`
+
+# \- \*\*Registry:\*\* `ghcr.io`
+
+# \- \*\*Visibility:\*\* Public
+
+# 
+
+# \[View the Docker package on GHCR](https://github.com/users/ghadeer-dehayyat/packages/container/ai381-churn-api)
+
+# 
+
+# \### Pull the Image Using Its Commit SHA Tag
+
+# 
+
+# ```bash
+
+# docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api:0e3db81d56fabc9b2ef74373bdf2668746f2741a
+
+# ```
+
+# 
+
+# \### Image Digest
+
+# 
+
+# ```text
+
+# sha256:9c9498d101a706cf2b0b73c5678082abfab80c40dd6f4e28e1f1aca61a51070a
+
+# ```
+
+# 
+
+# Pull the exact image by digest:
+
+# 
+
+# ```bash
+
+# docker pull ghcr.io/ghadeer-dehayyat/ai381-churn-api@sha256:9c9498d101a706cf2b0b73c5678082abfab80c40dd6f4e28e1f1aca61a51070a
+
+# ```
+
+# 
+
+# \## Repository
+
+# 
+
+# \[GitHub Repository](https://github.com/ghadeer-dehayyat/ai381-portfolio)
+
+# 
+
+# \---
+
+# 
+
+# \*\*AI381 Lab 2 - Container and CI\*\*  
+
+# Faculty of Computer and Information Technology  
+
+# Jordan University of Science and Technology (JUST)
+
+# 
+
+# \## Development Workflow
+
+# 
+
+# All changes are submitted through pull requests.
+
+# 
+
+# Pull requests targeting `main` must pass the required
+
+# GitHub Actions checks before they can be merged.
+
+# 
+
+# The `main` branch is protected by repository rules.
+
+
+
