@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Models and artifacts
+models/
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/champion.json
+!artifacts/metadata.json
+!artifacts/model.joblib
+
+# Reports and MLflow
+reports/
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate*
+infra/backend.hcl
+infra/terraform.tfvars
+infra/tfplan
+labs/lab-03/AI381_Lab3_Starter/
